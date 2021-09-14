@@ -1,0 +1,585 @@
+open data c:\work\jones2\DataSet.xls
+calendar(m) 1950:1
+data(format=xls,org=columns)
+tab
+
+
+log sp500 / lsp ; diff lsp / dlsp
+garch(q=1,p=1,hseries=ht) / dlsp
+
+GARCH(P=1,Q=1, METHOD=BHHH, pmethod=simplex, piters=200, HSERIES=ht,RESIDS=U,asy,exp) / dlsp ; dis %converged
+*GARCH(P=1,Q=1, METHOD=simplex,iters=5,asy,exp) / dlsp
+*GARCH(P=1,Q=1, METHOD=BHHH,iters=200, HSERIES=ht,RESIDS=U,asy,exp) / dlsp ; dis %converged
+
+set ht_std = ht/.00104346
+
+set contraction1 = t>=1953:07.and.t<=1954:05.or.t>=1957:08.and.t<=1958:04.or.t>=1960:04.and.t<=1961:02.or.t>=1969:12.and.t<=1970:11.or.t>=1973:11.and.t<=1975:03.or.t>=1980:01.and.t<=1980:07.or.t>=1981:07.and.t<=1982:11.or.t>=1990:07.and.t<=1991:03
+set contraction2 = t>=2001:03.and.t<=2001:11.or.t>=2007:12.and.t<=2009:06
+set contraction = contraction1.or.contraction2
+graph(hea="Figure 6 - Uncertainty and Consumer Credit",shading=contraction,hlabel="Time",vlabel="Monthly Consumer Credit",overlay=line,ovcount=1,omax=10.,omin=0,ovlabel="Conditional Variance of the S&P 500") 2 ; # credit; # ht_std
+
+
+log indprod / lind ; dif lind / dlind
+log durable_goods / ldur ; dif ldur / dldur
+log credit / lcredit ; diff lcredit / dlcredit
+
+
+*************Lstar Model**************
+set ht_std = ht/.00104346
+
+nonlin a0 a1 b0 b1 gamma var c
+frml expression = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(ht_std{0}-c)))
+*frml lstar dlcredit = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(ht{0}-.002249)))
+frml lstar = -log(var) - (dlcredit - expression)**2/var
+lin(noprint) dlcredit ; # constant dlcredit{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 10., c = 2., var = %seesq
+maximize(iters=20,method=simplex) lstar
+maximize(iters=500) lstar
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+*************Lstar Model**************
+set ht_std = ht/.00104346
+
+nonlin a0 a1 b0 b1 gamma var c
+frml expression = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(ht{0}-c)))
+*frml lstar dlcredit = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(ht{0}-.002249)))
+frml lstar = -log(var) - (dlcredit - expression)**2/var
+lin(noprint) dlcredit ; # constant dlcredit{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 10., c = .0028, var = %seesq
+maximize(iters=20,method=simplex) lstar
+maximize(iters=500) lstar
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+*******************************************************************
+set theta = (1+exp(-gamma*(ht{0}-0.002195)))^-1
+sca(hea="Figure 6 Panel B",hlabel="Uncertainty Measure - Conditional Variance of the S&P 500",vlabel="Values of the Transition Function") 1 ; # ht_std theta
+
+
+
+set e = dlcredit - (0.003134+0.610789*dlcredit{1}+(-0.002587+0.081314*dlcredit{1})/(1+EXP(-3097.436797*(ht{0}-0.002195))))
+
+
+set fdlcredit2000 1 745 = 0.
+set flcredit2000 1 745 = 0.
+dis lcredit(2009:6)
+*******Industrial Production Since 2000 if ht = average from the 90s**********
+set hteq = 0.00154
+com fdlcredit2000(602) = dlcredit(2000:01)
+set fdlcredit2000 603 * = 0.003134+0.610789*fdlcredit2000{1}+(-0.002587+0.081314*fdlcredit2000{1})/(1+EXP(-3097.436797*(hteq - 0.002195)))
+com flcredit2000(602) = 7.34548
+set flcredit2000 603 * = fdlcredit2000 + flcredit2000{1}
+set fcredit2000 = exp(flcredit2000)
+
+declare vect[string] grakey
+compute grakey = ||'Consumer Credit with Average Uncertainty from the 90s','Actual Consumer Credit'||
+gra(hea="Figure 7 - Panel A",patterns,key=below,klabel=grakey,hlabel="Time",vlabel="Monthly Consumer Credit") 2; # fcredit2000 603 *; # credit 603 *
+**********************************************************************************
+set fdlcredit2008 1 745 = 0.
+set flcredit2008 1 745 = 0.
+
+********Industrial Production Since if ht = financial crisis*******************
+set hteq = 0.0052
+com fdlcredit2008(2010:6) = dlcredit(2010:06)
+set fdlcredit2008 2010:7 * = 0.003134+0.610789*fdlcredit2008{1}+(-0.002587+0.081314*fdlcredit2008{1})/(1+EXP(-3097.436797*(hteq - 0.002195)))
+com flcredit2008(2010:6) = 7.7835
+set flcredit2008 2010:7 * = fdlcredit2008 + flcredit2008{1}
+set fcredit2008 = exp(flcredit2008)
+dis credit(2010:06)
+declare vect[string] grakey
+compute grakey = ||'Consumer Credit with Uncertainty from the Financial Crisis','Actual Consumer Credit'||
+gra(hea="Figure 7 - Panel B",patterns,key=below,klabel=grakey,hlabel="Time",vlabel="Monthly Consumer Credit") 2; # fcredit2008 2010:6 2012:6; # credit 2010:6 2012:6
+dis ht(2009:1)
+************Generalized Impulse Response*************************
+
+dec vector[series] responses(24)
+
+do i = 1,24
+	set responses(i) 1 1000 = 0.
+end do i
+
+
+
+**********GIRF - After the Financial Crisis******************
+
+
+sta u
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:12,-1*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:12 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlcredit
+	set y_star 2008:12 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002195)))
+	set fitted 2008:11 2012:1 = lcredit
+	set fitted 2008:12 * = fitted{1} + y_star
+	set credit = exp(fitted)
+   com responses(1)(i) = credit(2008:12)
+	com responses(2)(i) = credit(2009:1)
+	com responses(3)(i) = credit(2009:2)
+	com responses(4)(i) = credit(2009:3)
+	com responses(5)(i) = credit(2009:4)
+	com responses(6)(i) = credit(2009:5)
+	com responses(7)(i) = credit(2009:6)
+	com responses(8)(i) = credit(2009:7)
+	com responses(9)(i) = credit(2009:8)
+	com responses(10)(i) = credit(2009:9)
+	com responses(11)(i) = credit(2009:10)
+	com responses(12)(i) = credit(2009:11)
+	com responses(13)(i) = credit(2009:12)
+	com responses(14)(i) = credit(2010:1)
+	com responses(15)(i) = credit(2010:2)
+	com responses(16)(i) = credit(2010:3)
+	com responses(17)(i) = credit(2010:4)
+	com responses(18)(i) = credit(2010:5)
+	com responses(19)(i) = credit(2010:6)
+	com responses(20)(i) = credit(2010:7)
+	com responses(21)(i) = credit(2010:8)
+	com responses(22)(i) = credit(2010:9)
+	com responses(23)(i) = credit(2010:10)
+	com responses(24)(i) = credit(2010:11)
+end do i
+
+* for forecasting
+set mp1 2008:12 * = 0.   ; set high 2008:12 * = 0. ; set low 2008:12 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mp1(2008:11+i) = %mean , high(2008:11+i) = %fract95 , low(2008:11+i) = %fract05
+end do
+*
+*
+
+declare vect[string] grakey
+compute grakey = ||'Mean Estimate of Uncertainty Shock','95% Confidence Interval',''||
+*gra(pat,hea="Figure 7: Impulse Response to a Temporary Positive 1 Standard Deviation Uncertainty Shock (2008:12)",key=below,klabel=grakey,vlabel="Industrial Production") 3;# mp1 2008:12 2008:12+12 1;# high 2008:12 2008:12+12 2;# low 2008:12 2008:12+12 2
+*
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:12,-2*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:12 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlcredit
+	set y_star 2008:12 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002195)))
+	set fitted 2008:11 2012:1 = lcredit
+	set fitted 2008:12 * = fitted{1} + y_star
+	set credit = exp(fitted)
+   com responses(1)(i) = credit(2008:12)
+	com responses(2)(i) = credit(2009:1)
+	com responses(3)(i) = credit(2009:2)
+	com responses(4)(i) = credit(2009:3)
+	com responses(5)(i) = credit(2009:4)
+	com responses(6)(i) = credit(2009:5)
+	com responses(7)(i) = credit(2009:6)
+	com responses(8)(i) = credit(2009:7)
+	com responses(9)(i) = credit(2009:8)
+	com responses(10)(i) = credit(2009:9)
+	com responses(11)(i) = credit(2009:10)
+	com responses(12)(i) = credit(2009:11)
+	com responses(13)(i) = credit(2009:12)
+	com responses(14)(i) = credit(2010:1)
+	com responses(15)(i) = credit(2010:2)
+	com responses(16)(i) = credit(2010:3)
+	com responses(17)(i) = credit(2010:4)
+	com responses(18)(i) = credit(2010:5)
+	com responses(19)(i) = credit(2010:6)
+	com responses(20)(i) = credit(2010:7)
+	com responses(21)(i) = credit(2010:8)
+	com responses(22)(i) = credit(2010:9)
+	com responses(23)(i) = credit(2010:10)
+	com responses(24)(i) = credit(2010:11)
+end do i
+
+* for forecasting
+set mp2 2008:12 * = 0.   ; set high 2008:12 * = 0. ; set low 2008:12 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mp2(2008:11+i) = %mean , high(2008:11+i) = %fract95 , low(2008:11+i) = %fract05
+end do
+*
+*
+
+
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:12,1*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:12 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlcredit
+	set y_star 2008:12 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002195)))
+	set fitted 2008:11 2012:1 = lcredit
+	set fitted 2008:12 * = fitted{1} + y_star
+	set credit = exp(fitted)
+   com responses(1)(i) = credit(2008:12)
+	com responses(2)(i) = credit(2009:1)
+	com responses(3)(i) = credit(2009:2)
+	com responses(4)(i) = credit(2009:3)
+	com responses(5)(i) = credit(2009:4)
+	com responses(6)(i) = credit(2009:5)
+	com responses(7)(i) = credit(2009:6)
+	com responses(8)(i) = credit(2009:7)
+	com responses(9)(i) = credit(2009:8)
+	com responses(10)(i) = credit(2009:9)
+	com responses(11)(i) = credit(2009:10)
+	com responses(12)(i) = credit(2009:11)
+	com responses(13)(i) = credit(2009:12)
+	com responses(14)(i) = credit(2010:1)
+	com responses(15)(i) = credit(2010:2)
+	com responses(16)(i) = credit(2010:3)
+	com responses(17)(i) = credit(2010:4)
+	com responses(18)(i) = credit(2010:5)
+	com responses(19)(i) = credit(2010:6)
+	com responses(20)(i) = credit(2010:7)
+	com responses(21)(i) = credit(2010:8)
+	com responses(22)(i) = credit(2010:9)
+	com responses(23)(i) = credit(2010:10)
+	com responses(24)(i) = credit(2010:11)
+end do i
+
+* for forecasting
+set mn1 2008:12 * = 0.   ; set high 2008:12 * = 0. ; set low 2008:12 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mn1(2008:11+i) = %mean , high(2008:11+i) = %fract95 , low(2008:11+i) = %fract05
+end do
+*
+*
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:12,2*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:12 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlcredit
+	set y_star 2008:12 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002195)))
+	set fitted 2008:11 2012:1 = lcredit
+	set fitted 2008:12 * = fitted{1} + y_star
+	set credit = exp(fitted)
+   com responses(1)(i) = credit(2008:12)
+	com responses(2)(i) = credit(2009:1)
+	com responses(3)(i) = credit(2009:2)
+	com responses(4)(i) = credit(2009:3)
+	com responses(5)(i) = credit(2009:4)
+	com responses(6)(i) = credit(2009:5)
+	com responses(7)(i) = credit(2009:6)
+	com responses(8)(i) = credit(2009:7)
+	com responses(9)(i) = credit(2009:8)
+	com responses(10)(i) = credit(2009:9)
+	com responses(11)(i) = credit(2009:10)
+	com responses(12)(i) = credit(2009:11)
+	com responses(13)(i) = credit(2009:12)
+	com responses(14)(i) = credit(2010:1)
+	com responses(15)(i) = credit(2010:2)
+	com responses(16)(i) = credit(2010:3)
+	com responses(17)(i) = credit(2010:4)
+	com responses(18)(i) = credit(2010:5)
+	com responses(19)(i) = credit(2010:6)
+	com responses(20)(i) = credit(2010:7)
+	com responses(21)(i) = credit(2010:8)
+	com responses(22)(i) = credit(2010:9)
+	com responses(23)(i) = credit(2010:10)
+	com responses(24)(i) = credit(2010:11)
+end do i
+
+* for forecasting
+set mn2 2008:12 * = 0.   ; set high 2008:12 * = 0. ; set low 2008:12 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mn2(2008:11+i) = %mean , high(2008:11+i) = %fract95 , low(2008:11+i) = %fract05
+end do
+*
+*
+*
+
+declare vect[string] grakey
+compute grakey = ||'2 Standard Deviation Positive Uncertainty Shock','1 Standard Deviation Positive Uncertainty Shock','1 Standard Deviation Negative Uncertainty Shock','2 Standard Deviation Negative Uncertainty Shock'||
+gra(patterns,hea="Figure 8: The Effects of a Temporary Shock to Uncertainty During the Financial Crisis",klabel=grakey,vlabel="Consumer Credit",key=below) 3;# mp2 2008:12 2008:12+23;# mp1 2008:12 2008:12+23;# mn1 2008:12 2008:12+23
+
+
+**********GIRF - Before the Financial Crisis******************
+
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:1,-1*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:1 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlcredit
+	set y_star 2008:1 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002195)))
+	set fitted 2007:12 2012:1 = lcredit
+	set fitted 2008:1 * = fitted{1} + y_star
+	set credit = exp(fitted)
+   com responses(1)(i) = credit(2008:1)
+	com responses(2)(i) = credit(2008:2)
+	com responses(3)(i) = credit(2008:3)
+	com responses(4)(i) = credit(2008:4)
+	com responses(5)(i) = credit(2008:5)
+	com responses(6)(i) = credit(2008:6)
+	com responses(7)(i) = credit(2008:7)
+	com responses(8)(i) = credit(2008:8)
+	com responses(9)(i) = credit(2008:9)
+	com responses(10)(i) = credit(2008:10)
+	com responses(11)(i) = credit(2008:11)
+	com responses(12)(i) = credit(2008:12)
+	com responses(13)(i) = credit(2009:1)
+	com responses(14)(i) = credit(2009:2)
+	com responses(15)(i) = credit(2009:3)
+	com responses(16)(i) = credit(2009:4)
+	com responses(17)(i) = credit(2009:5)
+	com responses(18)(i) = credit(2009:6)
+	com responses(19)(i) = credit(2009:7)
+	com responses(20)(i) = credit(2009:8)
+	com responses(21)(i) = credit(2009:9)
+	com responses(22)(i) = credit(2009:10)
+	com responses(23)(i) = credit(2009:11)
+	com responses(24)(i) = credit(2009:12)
+end do i
+
+* for forecasting
+set mp1 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mp1(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+*
+*
+set m 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+
+*
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:1,-2*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:1 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlcredit
+	set y_star 2008:1 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002195)))
+	set fitted 2007:12 2012:1 = lcredit
+	set fitted 2008:1 * = fitted{1} + y_star
+	set credit = exp(fitted)
+   com responses(1)(i) = credit(2008:1)
+	com responses(2)(i) = credit(2008:2)
+	com responses(3)(i) = credit(2008:3)
+	com responses(4)(i) = credit(2008:4)
+	com responses(5)(i) = credit(2008:5)
+	com responses(6)(i) = credit(2008:6)
+	com responses(7)(i) = credit(2008:7)
+	com responses(8)(i) = credit(2008:8)
+	com responses(9)(i) = credit(2008:9)
+	com responses(10)(i) = credit(2008:10)
+	com responses(11)(i) = credit(2008:11)
+	com responses(12)(i) = credit(2008:12)
+	com responses(13)(i) = credit(2009:1)
+	com responses(14)(i) = credit(2009:2)
+	com responses(15)(i) = credit(2009:3)
+	com responses(16)(i) = credit(2009:4)
+	com responses(17)(i) = credit(2009:5)
+	com responses(18)(i) = credit(2009:6)
+	com responses(19)(i) = credit(2009:7)
+	com responses(20)(i) = credit(2009:8)
+	com responses(21)(i) = credit(2009:9)
+	com responses(22)(i) = credit(2009:10)
+	com responses(23)(i) = credit(2009:11)
+	com responses(24)(i) = credit(2009:12)
+end do i
+
+* for forecasting
+set mp2 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mp2(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+*gra 4 ; # indprod 2007:1 2008:1 ; # mp2 2008:1 2008:1+23;# high 2008:1 2008:1+23; # low 2008:1 2008:1+23
+*
+*
+set m 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:1,1*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:1 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlcredit
+	set y_star 2008:1 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002195)))
+	set fitted 2007:12 2012:1 = lcredit
+	set fitted 2008:1 * = fitted{1} + y_star
+	set credit = exp(fitted)
+   com responses(1)(i) = credit(2008:1)
+	com responses(2)(i) = credit(2008:2)
+	com responses(3)(i) = credit(2008:3)
+	com responses(4)(i) = credit(2008:4)
+	com responses(5)(i) = credit(2008:5)
+	com responses(6)(i) = credit(2008:6)
+	com responses(7)(i) = credit(2008:7)
+	com responses(8)(i) = credit(2008:8)
+	com responses(9)(i) = credit(2008:9)
+	com responses(10)(i) = credit(2008:10)
+	com responses(11)(i) = credit(2008:11)
+	com responses(12)(i) = credit(2008:12)
+	com responses(13)(i) = credit(2009:1)
+	com responses(14)(i) = credit(2009:2)
+	com responses(15)(i) = credit(2009:3)
+	com responses(16)(i) = credit(2009:4)
+	com responses(17)(i) = credit(2009:5)
+	com responses(18)(i) = credit(2009:6)
+	com responses(19)(i) = credit(2009:7)
+	com responses(20)(i) = credit(2009:8)
+	com responses(21)(i) = credit(2009:9)
+	com responses(22)(i) = credit(2009:10)
+	com responses(23)(i) = credit(2009:11)
+	com responses(24)(i) = credit(2009:12)
+end do i
+
+* for forecasting
+set mn1 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mn1(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+*gra 4 ; # indprod 2007:1 2008:1 ; # mn1 2008:1 2008:1+23;# high 2008:1 2008:1+23; # low 2008:1 2008:1+23
+*
+*
+set m 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:1,2*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:1 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlcredit
+	set y_star 2008:1 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002195)))
+	set fitted 2007:12 2012:1 = lcredit
+	set fitted 2008:1 * = fitted{1} + y_star
+	set credit = exp(fitted)
+   com responses(1)(i) = credit(2008:1)
+	com responses(2)(i) = credit(2008:2)
+	com responses(3)(i) = credit(2008:3)
+	com responses(4)(i) = credit(2008:4)
+	com responses(5)(i) = credit(2008:5)
+	com responses(6)(i) = credit(2008:6)
+	com responses(7)(i) = credit(2008:7)
+	com responses(8)(i) = credit(2008:8)
+	com responses(9)(i) = credit(2008:9)
+	com responses(10)(i) = credit(2008:10)
+	com responses(11)(i) = credit(2008:11)
+	com responses(12)(i) = credit(2008:12)
+	com responses(13)(i) = credit(2009:1)
+	com responses(14)(i) = credit(2009:2)
+	com responses(15)(i) = credit(2009:3)
+	com responses(16)(i) = credit(2009:4)
+	com responses(17)(i) = credit(2009:5)
+	com responses(18)(i) = credit(2009:6)
+	com responses(19)(i) = credit(2009:7)
+	com responses(20)(i) = credit(2009:8)
+	com responses(21)(i) = credit(2009:9)
+	com responses(22)(i) = credit(2009:10)
+	com responses(23)(i) = credit(2009:11)
+	com responses(24)(i) = credit(2009:12)
+end do i
+
+* for forecasting
+set mn2 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mn2(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+*
+*
+set m 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+
+
+declare vect[string] grakey
+compute grakey = ||'2 Standard Deviation Positive Uncertainty Shock','1 Standard Deviation Positive Uncertainty Shock','1 Standard Deviation Negative Uncertainty Shock'||
+gra(patterns,hea="Figure 8 - Panel B: The Effects of a Temporary Shock to Uncertainty Before the Financial Crisis",klabel=grakey,vlabel="Consumer Credit",key=below) 3 ; # mp2 2008:1 2008:1+23; # mp1 2008:1 2008:1+23;# mn1 2008:1 2008:1+23
+
+
+
+***************Permanent Shocks****************
+sta ht
+sta u
+
+set ht_star = 0.002195
+set ht_star_p = 0.002195
+set ht_star_n = 0.002195
+sta dlcredit
+lin dlcredit / resids; # constant  dlcredit{1 to 3}
+dis (0.0013053237/(1-0.4067048424-0.2418635041-0.1463564546))
+
+set y_star = 0.00637
+set y_star_p = 0.00637
+set y_star_n = 0.00637
+set epsilon_p = -1*0.042327
+set epsilon_n = 1*0.042327
+
+set epsilon_p = -1*0.042327
+set epsilon_n = 1*0.042327
+
+set ht_star_p 2 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon_p{1})/(sqrt(ht_star_p{1}))+0.897063354*log(ht_star_p{1})-0.108310305*epsilon_p{1}/(sqrt(ht_star_p{1})))
+set ht_star_n 2 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon_n{1})/(sqrt(ht_star_n{1}))+0.897063354*log(ht_star_n{1})-0.108310305*epsilon_n{1}/(sqrt(ht_star_n{1})))
+
+*gra(patterns,key=below) 3; # ht_star_n ; # ht_star_p; # ht_star
+
+
+set y_star_p 2 * = a0 + a1*y_star_p{1}+(b0 + b1*y_star_p{1})/(1+EXP(-gamma*(ht_star_p-0.002195)))
+set y_star_n 2 * = a0 + a1*y_star_n{1}+(b0 + b1*y_star_n{1})/(1+EXP(-gamma*(ht_star_n-0.002195)))
+set y_star_r = -1*y_star_p + 2*y_star_p(1)
+
+declare vect[string] grakey1
+compute grakey1 = ||'Permanent Positive Uncertainty Shock','Permanent Negative Uncertainty Shock','Reflection of Positive Shock'||
+gra(hea="Figure 7 - Panel C",nodates,patterns,klabel=grakey1,key=below,vlabel="Log Difference of Consumer Credit") 3; # y_star_p 1 12 ; # y_star_n 1 12 ; # y_star_r 1 12
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

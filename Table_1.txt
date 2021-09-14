@@ -1,0 +1,173 @@
+open data c:\work\jones2\DataSet.xls
+calendar(m) 1950:1
+data(format=xls,org=columns)
+tab
+
+log indprod / lind ; dif lind / dlind
+
+@lagselect dlind
+lin dlind / resids; # constant  dlind{1 to 2}
+@bic
+cor(qstats,span=4,number=16,dfc=%narma) resids
+@bjident resids
+
+prj fitted
+set f2 = fitted**2; set f3 = fitted**3 ;set f4 = fitted**4
+lin resids ; # constant dlind{1 to 2}  f2 f3 f4
+exc ; # f2 f3 f4
+@reset(h=4) dlind
+# constant dlind{1 to 2}
+
+@startest(p=2) dlind
+
+
+set thresh = dlind{1}
+@threshtest(thresh=thresh,graph,nreps=2000,trim=.1) dlind ; # constant dlind{1 to 2}
+
+
+
+***************************************************************************************
+
+
+log durable_goods / ldur ; dif ldur / dldur
+
+@lagselect dldur
+lin dldur / resids; # constant  dldur{1 to 1}
+@bic
+cor(qstats,span=4,number=16,dfc=%narma) resids
+@bjident resids
+
+prj fitted
+set f2 = fitted**2; set f3 = fitted**3 ;set f4 = fitted**4
+lin resids ; # constant dldur{1 to 1}  f2 f3 f4
+exc ; # f2 f3 f4
+@reset(h=4) dldur
+# constant dldur{1 to 1}
+
+
+@startest(p=1) dldur
+
+
+
+set thresh = dldur{1}
+@threshtest(thresh=thresh,graph,nreps=1000,trim=.15) dldur ; # constant dldur{1 to 1}
+
+
+
+
+***************************************************************************************
+
+
+log credit / lcredit ; dif lcredit / dlcredit
+
+@lagselect dlcredit
+lin dlcredit / resids; # constant  dlcredit{1 to 3}
+@bic
+
+prj fitted
+set f2 = fitted**2; set f3 = fitted**3 ;set f4 = fitted**4
+lin resids ; # constant dlcredit{1 to 3}  f2 f3 f4
+exc ; # f2 f3 f4
+@reset(h=4) dlcredit
+# constant dlcredit{1 to 3}
+@reset(h=3,test=lmtest) dlcredit
+# constant dlcredit{1 to 3}
+
+
+@startest(p=3) dlcredit
+
+
+
+set thresh = dlcredit{3}
+@threshtest(thresh=thresh,graph,nreps=1000,trim=.10) dlcredit ; # constant dlcredit{1 to 3}
+
+
+
+
+***************************************************************************************
+
+*tab
+log emp / lemp ; dif lemp / dlemp
+
+@lagselect dlemp
+lin dlemp / resids; # constant  dlemp{1 to 3}
+@bic
+cor(qstats,span=4,number=16,dfc=%narma) resids
+@bjident resids
+
+prj fitted
+set f2 = fitted**2; set f3 = fitted**3 ;set f4 = fitted**4
+lin resids ; # constant dlemp{1 to 3}  f2 f3 f4
+exc ; # f2 f3 f4
+@reset(h=4) dlemp
+# constant dlemp{1 to 3}
+
+
+@startest(p=3) dlemp
+
+
+set thresh = dlemp{2}
+@threshtest(thresh=thresh,graph,nreps=1000,trim=.10) dlemp ; # constant dlemp{1 to 3}
+
+
+
+
+***************************************************************************************
+
+*tab
+log loans / lloans ; dif lloans / dlloans
+
+@lagselect dlloans
+lin dlloans / resids; # constant  dlloans{1 to 5}
+@bic
+cor(qstats,span=4,number=16,dfc=%narma) resids
+@bjident resids
+
+prj fitted
+set f2 = fitted**2; set f3 = fitted**3 ;set f4 = fitted**4
+lin resids ; # constant dlloans{1 to 5}  f2 f3 f4
+exc ; # f2 f3 f4
+@reset(h=4) dlloans
+# constant dlloans{1 to 5}
+
+
+@startest(p=5) dlloans
+
+
+
+set thresh = dlloans{1}
+@threshtest(thresh=thresh,graph,nreps=1000,trim=.10) dlloans ; # constant dlloans{1 to 5}
+
+
+
+***************************************************************************************
+
+*tab
+log cash / lcash ; dif lcash / dlcash
+
+@lagselect dlcash
+lin dlcash / resids; # constant  dlcash{1 to 13}
+@bic
+cor(qstats,span=4,number=16,dfc=%narma) resids
+@bjident resids
+
+prj fitted
+set f2 = fitted**2; set f3 = fitted**3 ;set f4 = fitted**4
+lin resids ; # constant dlcash{1 to 13}  f2 f3 f4
+exc ; # f2 f3 f4
+@reset(h=4) dlcash
+# constant dlcash{1 to 13}
+
+
+@startest(p=13) dlcash
+
+
+set thresh = dlcash{3}
+@threshtest(thresh=thresh,graph,nreps=1000,trim=.10) dlcash ; # constant dlcash{1 to 13}
+
+
+
+
+
+
+

@@ -1,0 +1,633 @@
+open data c:\work\jones2\DataSet.xls
+calendar(m) 1950:1
+data(format=xls,org=columns)
+tab
+
+log sp500 / lsp ; diff lsp / dlsp
+garch(q=1,p=1,hseries=ht) / dlsp
+
+set contraction1 = t>=1953:07.and.t<=1954:05.or.t>=1957:08.and.t<=1958:04.or.t>=1960:04.and.t<=1961:02.or.t>=1969:12.and.t<=1970:11.or.t>=1973:11.and.t<=1975:03.or.t>=1980:01.and.t<=1980:07.or.t>=1981:07.and.t<=1982:11.or.t>=1990:07.and.t<=1991:03
+set contraction2 = t>=2001:03.and.t<=2001:11.or.t>=2007:12.and.t<=2009:06
+set contraction = contraction1.or.contraction2
+graph(shading=contraction,hea="Figure 1: Industrial Production and Uncertainty",hlabel="Time",vlabel="Monthly Industrial Production",overlay=line,ovcount=1,omax=.009,omin=0,ovlabel="Conditional Variance of the S&P 500") 2 ; # indprod; # ht
+
+
+
+GARCH(P=1,Q=1, METHOD=BHHH, HSERIES=H,RESIDS=U) / dlsp
+SET U1 = U(T)/SQRT(H(T))
+SET U2 = (U(T)*U(T))/H(T)
+SET SMINUS = U1<0.0
+SET SPLUS = 1 - SMINUS
+SET USMINUS = U1*SMINUS
+SET USPLUS = U1*SPLUS
+LINREG U2
+# CONSTANT SMINUS {1}
+LINREG U2
+# CONSTANT USMINUS{1}
+LINREG U2
+# CONSTANT USPLUS{1}
+LINREG U2
+# CONSTANT SMINUS {1} USMINUS {1} USPLUS {1}
+COMPUTE CHISTAT = %NOBS*%RSQUARED
+CDF CHISQ CHISTAT 3
+
+GARCH(P=1,Q=1, METHOD=BHHH, HSERIES=H,RESIDS=U,asy) / dlsp
+
+GARCH(P=1,Q=1, METHOD=BHHH, pmethod=simplex, piters=200, HSERIES=ht,RESIDS=U,asy,exp) / dlsp ; dis %converged
+*GARCH(P=1,Q=1, METHOD=simplex,iters=5,asy,exp) / dlsp
+*GARCH(P=1,Q=1, METHOD=BHHH,iters=200, HSERIES=ht,RESIDS=U,asy,exp) / dlsp ; dis %converged
+set std_err = u/ht^.5
+
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+*gra(header="Figure 2: Uncertainty Measure - EGARCH(1,1) Model of the Conditional Variance of the S&P 500",hlabel="Time",vlabel="Conditional Variance of the S&P 500",max=0.01) 1 ; # ht
+log indprod / lind ; dif lind / dlind
+log durable_goods / ldur ; dif ldur / dldur
+
+
+*************Lstar Model**************
+
+nonlin a0 a1 b0 b1 gamma var
+*frml expression =  a0 + a1*dlind{1} + (b0 + b1*dlind{1} )/(1+exp(-gamma*(ht{0}-c)))
+frml expression =  a0 + a1*dlind{1} + (b0 + b1*dlind{1} )/(1+exp(-gamma*(ht{0}-0.002249)))
+frml lstar = -log(var) - (dlind - expression)**2/var
+lin(noprint) dlind ; # constant dlind{1}
+com a0 = %beta(1), a1 = %beta(2), b1 = 1., b0 = 0., gamma = 200. , var = %seesq
+maximize(iters=20,method=simplex) lstar
+maximize(iters=500) lstar
+
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+         dis a0
+*******************************************************************
+set theta = (1+exp(-gamma*(ht{0}-0.002249)))^-1
+*sca(hlabel="Uncertainty Measure - Conditional Variance of the S&P 500",vlabel="Values of Theta",header="Figure 3: Values of Theta in the LSTAR Model") 1 ; # ht theta
+
+
+set e = dlind - (0.002977+0.283631*dlind{1}+(-0.004742+0.352559*dlind{1})/(1+EXP(-5897.619763*(ht{0}-0.002249))))
+
+
+set fdlind2000 1 745 = 0.
+set flind2000 1 745 = 0.
+
+*******Industrial Production Since 2000 if ht = average from the 90s**********
+set hteq = 0.00154
+com fdlind2000(602) = dlind(2000:01)
+set fdlind2000 603 * = 0.002977+0.283631*fdlind2000{1}+(-0.004742+0.352559*fdlind2000{1})/(1+EXP(-5897.619763*(hteq - 0.002249)))
+com flind2000(602) = 4.51067
+set flind2000 603 * = fdlind2000 + flind2000{1}
+set find2000 = exp(flind2000)
+
+declare vect[string] grakey
+compute grakey = ||'Industrial Production with Average Uncertainty from the 90s','Actual Industrial Production'||
+gra(header="Figure 2 - Panel A: Historical Decomposition",patterns,key=below,klabel=grakey,hlabel="Time",vlabel="Monthly Industrial Production") 2; # find2000 603 *; # Indprod 603 *
+**********************************************************************************
+set fdlind2008 1 745 = 0.
+set flind2008 1 745 = 0.
+
+********Industrial Production Since if ht = financial crisis*******************
+set hteq = 0.0052
+com fdlind2008(2009:6) = dlind(2009:06)
+set fdlind2008 2009:7 * = 0.002977+0.283631*fdlind2008{1}+(-0.004742+0.352559*fdlind2008{1})/(1+EXP(-5897.619763*(hteq - 0.002249)))
+com flind2008(2009:6) = 4.42516
+set flind2008 2009:7 * = fdlind2008 + flind2008{1}
+set find2008 = exp(flind2008)
+
+declare vect[string] grakey
+compute grakey = ||'Industrial Production with Uncertainty from Financial Crisis','Actual Industrial Production'||
+gra(header="Figure 2 - Panel B: Historical Decomposition",patterns,key=below,klabel=grakey,hlabel="Time",vlabel="Monthly Industrial Production") 2; # find2008 2009:6 2012:1; # Indprod 2009:6 *
+************Generalized Impulse Response*************************
+
+dec vector[series] responses(24)
+
+do i = 1,24
+	set responses(i) 1 1000 = 0.
+end do i
+
+
+
+**********GIRF - After the Financial Crisis******************
+
+
+sta u
+*gra 1; # u
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:12,-1*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:12 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlind
+	set y_star 2008:12 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002249)))
+	set fitted 2008:11 2012:1 = lind
+	set fitted 2008:12 * = fitted{1} + y_star
+	set ind = exp(fitted)
+   com responses(1)(i) = ind(2008:12)
+	com responses(2)(i) = ind(2009:1)
+	com responses(3)(i) = ind(2009:2)
+	com responses(4)(i) = ind(2009:3)
+	com responses(5)(i) = ind(2009:4)
+	com responses(6)(i) = ind(2009:5)
+	com responses(7)(i) = ind(2009:6)
+	com responses(8)(i) = ind(2009:7)
+	com responses(9)(i) = ind(2009:8)
+	com responses(10)(i) = ind(2009:9)
+	com responses(11)(i) = ind(2009:10)
+	com responses(12)(i) = ind(2009:11)
+	com responses(13)(i) = ind(2009:12)
+	com responses(14)(i) = ind(2010:1)
+	com responses(15)(i) = ind(2010:2)
+	com responses(16)(i) = ind(2010:3)
+	com responses(17)(i) = ind(2010:4)
+	com responses(18)(i) = ind(2010:5)
+	com responses(19)(i) = ind(2010:6)
+	com responses(20)(i) = ind(2010:7)
+	com responses(21)(i) = ind(2010:8)
+	com responses(22)(i) = ind(2010:9)
+	com responses(23)(i) = ind(2010:10)
+	com responses(24)(i) = ind(2010:11)
+end do i
+
+* for forecasting
+set mp1 2008:12 * = 0.   ; set high 2008:12 * = 0. ; set low 2008:12 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mp1(2008:11+i) = %mean , high(2008:11+i) = %fract95 , low(2008:11+i) = %fract05
+end do
+*
+*
+
+declare vect[string] grakey
+compute grakey = ||'Mean Estimate of Uncertainty Shock','95% Confidence Interval',''||
+gra(pat,hea="Figure 3 - Panel A: Temporary Positive 1 Standard Deviation Uncertainty Shock (2008:12)",key=below,klabel=grakey,vlabel="Industrial Production") 3;# mp1 2008:12 2008:12+12 1;# high 2008:12 2008:12+12 2;# low 2008:12 2008:12+12 2
+*
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:12,-2*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:12 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlind
+	set y_star 2008:12 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002249)))
+	set fitted 2008:11 2012:1 = lind
+	set fitted 2008:12 * = fitted{1} + y_star
+	set ind = exp(fitted)
+   com responses(1)(i) = ind(2008:12)
+	com responses(2)(i) = ind(2009:1)
+	com responses(3)(i) = ind(2009:2)
+	com responses(4)(i) = ind(2009:3)
+	com responses(5)(i) = ind(2009:4)
+	com responses(6)(i) = ind(2009:5)
+	com responses(7)(i) = ind(2009:6)
+	com responses(8)(i) = ind(2009:7)
+	com responses(9)(i) = ind(2009:8)
+	com responses(10)(i) = ind(2009:9)
+	com responses(11)(i) = ind(2009:10)
+	com responses(12)(i) = ind(2009:11)
+	com responses(13)(i) = ind(2009:12)
+	com responses(14)(i) = ind(2010:1)
+	com responses(15)(i) = ind(2010:2)
+	com responses(16)(i) = ind(2010:3)
+	com responses(17)(i) = ind(2010:4)
+	com responses(18)(i) = ind(2010:5)
+	com responses(19)(i) = ind(2010:6)
+	com responses(20)(i) = ind(2010:7)
+	com responses(21)(i) = ind(2010:8)
+	com responses(22)(i) = ind(2010:9)
+	com responses(23)(i) = ind(2010:10)
+	com responses(24)(i) = ind(2010:11)
+end do i
+
+* for forecasting
+set mp2 2008:12 * = 0.   ; set high 2008:12 * = 0. ; set low 2008:12 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mp2(2008:11+i) = %mean , high(2008:11+i) = %fract95 , low(2008:11+i) = %fract05
+end do
+*
+*
+
+
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:12,1*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:12 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlind
+	set y_star 2008:12 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002249)))
+	set fitted 2008:11 2012:1 = lind
+	set fitted 2008:12 * = fitted{1} + y_star
+	set ind = exp(fitted)
+   com responses(1)(i) = ind(2008:12)
+	com responses(2)(i) = ind(2009:1)
+	com responses(3)(i) = ind(2009:2)
+	com responses(4)(i) = ind(2009:3)
+	com responses(5)(i) = ind(2009:4)
+	com responses(6)(i) = ind(2009:5)
+	com responses(7)(i) = ind(2009:6)
+	com responses(8)(i) = ind(2009:7)
+	com responses(9)(i) = ind(2009:8)
+	com responses(10)(i) = ind(2009:9)
+	com responses(11)(i) = ind(2009:10)
+	com responses(12)(i) = ind(2009:11)
+	com responses(13)(i) = ind(2009:12)
+	com responses(14)(i) = ind(2010:1)
+	com responses(15)(i) = ind(2010:2)
+	com responses(16)(i) = ind(2010:3)
+	com responses(17)(i) = ind(2010:4)
+	com responses(18)(i) = ind(2010:5)
+	com responses(19)(i) = ind(2010:6)
+	com responses(20)(i) = ind(2010:7)
+	com responses(21)(i) = ind(2010:8)
+	com responses(22)(i) = ind(2010:9)
+	com responses(23)(i) = ind(2010:10)
+	com responses(24)(i) = ind(2010:11)
+end do i
+
+* for forecasting
+set mn1 2008:12 * = 0.   ; set high 2008:12 * = 0. ; set low 2008:12 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mn1(2008:11+i) = %mean , high(2008:11+i) = %fract95 , low(2008:11+i) = %fract05
+end do
+*
+*
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:12,2*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:12 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlind
+	set y_star 2008:12 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002249)))
+	set fitted 2008:11 2012:1 = lind
+	set fitted 2008:12 * = fitted{1} + y_star
+	set ind = exp(fitted)
+   com responses(1)(i) = ind(2008:12)
+	com responses(2)(i) = ind(2009:1)
+	com responses(3)(i) = ind(2009:2)
+	com responses(4)(i) = ind(2009:3)
+	com responses(5)(i) = ind(2009:4)
+	com responses(6)(i) = ind(2009:5)
+	com responses(7)(i) = ind(2009:6)
+	com responses(8)(i) = ind(2009:7)
+	com responses(9)(i) = ind(2009:8)
+	com responses(10)(i) = ind(2009:9)
+	com responses(11)(i) = ind(2009:10)
+	com responses(12)(i) = ind(2009:11)
+	com responses(13)(i) = ind(2009:12)
+	com responses(14)(i) = ind(2010:1)
+	com responses(15)(i) = ind(2010:2)
+	com responses(16)(i) = ind(2010:3)
+	com responses(17)(i) = ind(2010:4)
+	com responses(18)(i) = ind(2010:5)
+	com responses(19)(i) = ind(2010:6)
+	com responses(20)(i) = ind(2010:7)
+	com responses(21)(i) = ind(2010:8)
+	com responses(22)(i) = ind(2010:9)
+	com responses(23)(i) = ind(2010:10)
+	com responses(24)(i) = ind(2010:11)
+end do i
+
+* for forecasting
+set mn2 2008:12 * = 0.   ; set high 2008:12 * = 0. ; set low 2008:12 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mn2(2008:11+i) = %mean , high(2008:11+i) = %fract95 , low(2008:11+i) = %fract05
+end do
+*
+*
+*
+
+declare vect[string] grakey
+compute grakey = ||'2 Standard Deviation Positive Uncertainty Shock','1 Standard Deviation Positive Uncertainty Shock','1 Standard Deviation Negative Uncertainty Shock','2 Standard Deviation Negative Uncertainty Shock'||
+gra(patterns,hea="Figure 4 - Panel A: Temporary Shock to Uncertainty During the Financial Crisis",klabel=grakey,vlabel="Industrial Production",key=below) 3;# mp2 2008:12 2008:12+23;# mp1 2008:12 2008:12+23;# mn1 2008:12 2008:12+23
+
+
+**********GIRF - Before the Financial Crisis******************
+
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:1,-1*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:1 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlind
+	set y_star 2008:1 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002249)))
+	set fitted 2007:12 2012:1 = lind
+	set fitted 2008:1 * = fitted{1} + y_star
+	set ind = exp(fitted)
+   com responses(1)(i) = ind(2008:1)
+	com responses(2)(i) = ind(2008:2)
+	com responses(3)(i) = ind(2008:3)
+	com responses(4)(i) = ind(2008:4)
+	com responses(5)(i) = ind(2008:5)
+	com responses(6)(i) = ind(2008:6)
+	com responses(7)(i) = ind(2008:7)
+	com responses(8)(i) = ind(2008:8)
+	com responses(9)(i) = ind(2008:9)
+	com responses(10)(i) = ind(2008:10)
+	com responses(11)(i) = ind(2008:11)
+	com responses(12)(i) = ind(2008:12)
+	com responses(13)(i) = ind(2009:1)
+	com responses(14)(i) = ind(2009:2)
+	com responses(15)(i) = ind(2009:3)
+	com responses(16)(i) = ind(2009:4)
+	com responses(17)(i) = ind(2009:5)
+	com responses(18)(i) = ind(2009:6)
+	com responses(19)(i) = ind(2009:7)
+	com responses(20)(i) = ind(2009:8)
+	com responses(21)(i) = ind(2009:9)
+	com responses(22)(i) = ind(2009:10)
+	com responses(23)(i) = ind(2009:11)
+	com responses(24)(i) = ind(2009:12)
+end do i
+
+* for forecasting
+set mp1 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mp1(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+*
+*
+set m 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:1,-2*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:1 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlind
+	set y_star 2008:1 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002249)))
+	set fitted 2007:12 2012:1 = lind
+	set fitted 2008:1 * = fitted{1} + y_star
+	set ind = exp(fitted)
+   com responses(1)(i) = ind(2008:1)
+	com responses(2)(i) = ind(2008:2)
+	com responses(3)(i) = ind(2008:3)
+	com responses(4)(i) = ind(2008:4)
+	com responses(5)(i) = ind(2008:5)
+	com responses(6)(i) = ind(2008:6)
+	com responses(7)(i) = ind(2008:7)
+	com responses(8)(i) = ind(2008:8)
+	com responses(9)(i) = ind(2008:9)
+	com responses(10)(i) = ind(2008:10)
+	com responses(11)(i) = ind(2008:11)
+	com responses(12)(i) = ind(2008:12)
+	com responses(13)(i) = ind(2009:1)
+	com responses(14)(i) = ind(2009:2)
+	com responses(15)(i) = ind(2009:3)
+	com responses(16)(i) = ind(2009:4)
+	com responses(17)(i) = ind(2009:5)
+	com responses(18)(i) = ind(2009:6)
+	com responses(19)(i) = ind(2009:7)
+	com responses(20)(i) = ind(2009:8)
+	com responses(21)(i) = ind(2009:9)
+	com responses(22)(i) = ind(2009:10)
+	com responses(23)(i) = ind(2009:11)
+	com responses(24)(i) = ind(2009:12)
+end do i
+
+* for forecasting
+set mp2 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mp2(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+*
+*
+set m 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:1,1*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:1 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlind
+	set y_star 2008:1 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002249)))
+	set fitted 2007:12 2012:1 = lind
+	set fitted 2008:1 * = fitted{1} + y_star
+	set ind = exp(fitted)
+   com responses(1)(i) = ind(2008:1)
+	com responses(2)(i) = ind(2008:2)
+	com responses(3)(i) = ind(2008:3)
+	com responses(4)(i) = ind(2008:4)
+	com responses(5)(i) = ind(2008:5)
+	com responses(6)(i) = ind(2008:6)
+	com responses(7)(i) = ind(2008:7)
+	com responses(8)(i) = ind(2008:8)
+	com responses(9)(i) = ind(2008:9)
+	com responses(10)(i) = ind(2008:10)
+	com responses(11)(i) = ind(2008:11)
+	com responses(12)(i) = ind(2008:12)
+	com responses(13)(i) = ind(2009:1)
+	com responses(14)(i) = ind(2009:2)
+	com responses(15)(i) = ind(2009:3)
+	com responses(16)(i) = ind(2009:4)
+	com responses(17)(i) = ind(2009:5)
+	com responses(18)(i) = ind(2009:6)
+	com responses(19)(i) = ind(2009:7)
+	com responses(20)(i) = ind(2009:8)
+	com responses(21)(i) = ind(2009:9)
+	com responses(22)(i) = ind(2009:10)
+	com responses(23)(i) = ind(2009:11)
+	com responses(24)(i) = ind(2009:12)
+end do i
+
+* for forecasting
+set mn1 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mn1(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+*
+*
+set m 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:1,2*0.042327,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:1 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlind
+	set y_star 2008:1 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002249)))
+	set fitted 2007:12 2012:1 = lind
+	set fitted 2008:1 * = fitted{1} + y_star
+	set ind = exp(fitted)
+   com responses(1)(i) = ind(2008:1)
+	com responses(2)(i) = ind(2008:2)
+	com responses(3)(i) = ind(2008:3)
+	com responses(4)(i) = ind(2008:4)
+	com responses(5)(i) = ind(2008:5)
+	com responses(6)(i) = ind(2008:6)
+	com responses(7)(i) = ind(2008:7)
+	com responses(8)(i) = ind(2008:8)
+	com responses(9)(i) = ind(2008:9)
+	com responses(10)(i) = ind(2008:10)
+	com responses(11)(i) = ind(2008:11)
+	com responses(12)(i) = ind(2008:12)
+	com responses(13)(i) = ind(2009:1)
+	com responses(14)(i) = ind(2009:2)
+	com responses(15)(i) = ind(2009:3)
+	com responses(16)(i) = ind(2009:4)
+	com responses(17)(i) = ind(2009:5)
+	com responses(18)(i) = ind(2009:6)
+	com responses(19)(i) = ind(2009:7)
+	com responses(20)(i) = ind(2009:8)
+	com responses(21)(i) = ind(2009:9)
+	com responses(22)(i) = ind(2009:10)
+	com responses(23)(i) = ind(2009:11)
+	com responses(24)(i) = ind(2009:12)
+end do i
+
+* for forecasting
+set mn2 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com mn2(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+*
+*
+set m 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+
+
+declare vect[string] grakey
+compute grakey = ||'2 Standard Deviation Positive Uncertainty Shock','1 Standard Deviation Positive Uncertainty Shock','1 Standard Deviation Negative Uncertainty Shock'||
+gra(patterns,hea="Figure 4 - Panel B: The Effects of a Temporary Shock to Uncertainty Before the Financial Crisis",klabel=grakey,vlabel="Industrial Production",key=below) 3 ; # mp2 2008:1 2008:1+23; # mp1 2008:1 2008:1+23;# mn1 2008:1 2008:1+23
+
+
+*************GIRF - 2008:11 shock in 2008:1*****************
+dis u(2008:12)
+*gra 1; # u
+
+do i = 1,1000
+*	set epsilon = u(fix(%uniform(1950:3,2012:1)))
+	set epsilon = %if(t.eq.2008:1,-0.09224,u(fix(%uniform(1950:3,2012:1))))
+	set ht_star = ht
+	set ht_star 2008:1 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon{1})/(sqrt(ht_star{1}))+0.897063354*log(ht_star{1})-0.108310305*epsilon{1}/(sqrt(ht_star{1})))
+
+	set y_star = dlind
+	set y_star 2008:1 * = a0 + a1*y_star{1}+(b0 + b1*y_star{1})/(1+EXP(-gamma*(ht_star-0.002249)))
+	set fitted 2007:12 2012:1 = lind
+	set fitted 2008:1 * = fitted{1} + y_star
+	set ind = exp(fitted)
+   com responses(1)(i) = ind(2008:1)
+	com responses(2)(i) = ind(2008:2)
+	com responses(3)(i) = ind(2008:3)
+	com responses(4)(i) = ind(2008:4)
+	com responses(5)(i) = ind(2008:5)
+	com responses(6)(i) = ind(2008:6)
+	com responses(7)(i) = ind(2008:7)
+	com responses(8)(i) = ind(2008:8)
+	com responses(9)(i) = ind(2008:9)
+	com responses(10)(i) = ind(2008:10)
+	com responses(11)(i) = ind(2008:11)
+	com responses(12)(i) = ind(2008:12)
+	com responses(13)(i) = ind(2009:1)
+	com responses(14)(i) = ind(2009:2)
+	com responses(15)(i) = ind(2009:3)
+	com responses(16)(i) = ind(2009:4)
+	com responses(17)(i) = ind(2009:5)
+	com responses(18)(i) = ind(2009:6)
+	com responses(19)(i) = ind(2009:7)
+	com responses(20)(i) = ind(2009:8)
+	com responses(21)(i) = ind(2009:9)
+	com responses(22)(i) = ind(2009:10)
+	com responses(23)(i) = ind(2009:11)
+	com responses(24)(i) = ind(2009:12)
+end do i
+
+* for forecasting
+set m2 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m2(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+*
+*
+set m2 2008:1 * = 0.   ; set high 2008:1 * = 0. ; set low 2008:1 * = 0.
+do i = 1,24
+    sta(fractiles,print) responses(i)
+    com m2(2007:12+i) = %mean , high(2007:12+i) = %fract95 , low(2007:12+i) = %fract05
+end do
+
+declare vect[string] grakey
+compute grakey = ||'Mean Estimate of Uncertainty Shock','95% Confidence Interval',''||
+gra(patterns,hea="Figure 3 - Panel B: A Temporary 2008:12 Uncertainty Shock During 2008:1",key=below,klabel=grakey,vlabel="Industrial Production") 3 ; # m2 2008:1 2008:1+11 1; # high 2008:1 2008:1+11 2; # low 2008:1 2008:1+11 2
+*
+
+
+***************Permanent Shocks****************
+sta ht
+sta u
+
+set ht_star = 0.002249
+set ht_star_p = 0.002249
+set ht_star_n = 0.002249
+
+set y_star = 0.001121857634450516
+set y_star_p = 0.001121857634450516
+set y_star_n = 0.001121857634450516
+set epsilon_p = -1*0.042327
+set epsilon_n = 1*0.042327
+
+set epsilon_p = -1*0.042327
+set epsilon_n = 1*0.042327
+
+set ht_star_p 2 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon_p{1})/(sqrt(ht_star_p{1}))+0.897063354*log(ht_star_p{1})-0.108310305*epsilon_p{1}/(sqrt(ht_star_p{1})))
+set ht_star_n 2 * = 2.718281828459^(-0.823795169+0.209880303*abs(epsilon_n{1})/(sqrt(ht_star_n{1}))+0.897063354*log(ht_star_n{1})-0.108310305*epsilon_n{1}/(sqrt(ht_star_n{1})))
+
+*gra(patterns,key=below) 3; # ht_star_n ; # ht_star_p; # ht_star
+
+
+set y_star_p 2 * = a0 + a1*y_star_p{1}+(b0 + b1*y_star_p{1})/(1+EXP(-gamma*(ht_star_p-0.002249)))
+set y_star_n 2 * = a0 + a1*y_star_n{1}+(b0 + b1*y_star_n{1})/(1+EXP(-gamma*(ht_star_n-0.002249)))
+set y_star_r = -1*y_star_p + 2*y_star_p(1)
+
+declare vect[string] grakey1
+compute grakey1 = ||'Permanent Positive Uncertainty Shock','Permanent Negative Uncertainty Shock','Reflection of Positive Shock'||
+gra(nodates,patterns,hea="Figure 2 - Panel C: The Effects of a Permanent Shock to Uncertainty",klabel=grakey1,key=below,vlabel="Log Difference of Industrial Production") 3; # y_star_p 1 12 ; # y_star_n 1 12 ; # y_star_r 1 12
+
+
+
+
+
+
+
+
+
+
+
+
+

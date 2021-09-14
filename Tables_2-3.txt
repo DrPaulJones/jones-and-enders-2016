@@ -1,0 +1,178 @@
+open data f:\DataSet.xls
+calendar(m) 1950:1
+data(format=xls,org=columns)
+tab
+
+
+log sp500 / lsp ; diff lsp / dlsp
+garch(q=1,p=1,hseries=ht) / dlsp
+
+
+GARCH(P=1,Q=1, METHOD=BHHH, pmethod=simplex, piters=200, HSERIES=ht,RESIDS=U,asy,exp) / dlsp ; dis %converged
+*GARCH(P=1,Q=1, METHOD=simplex,iters=5,asy,exp) / dlsp
+*GARCH(P=1,Q=1, METHOD=BHHH,iters=200, HSERIES=ht,RESIDS=U,asy,exp) / dlsp ; dis %converged
+log indprod / lind ; dif lind / dlind
+log durable_goods / ldur ; dif ldur / dldur
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dlind = a0 + a1*dlind{1} + (b0 + b1*dlind{1} )/(1+exp(-gamma*(ht{0}-c)))
+*frml lstar dlind = a0 + a1*dlind{1} + (b0 + b1*dlind{1} )/(1+exp(-gamma*(ht{0}-0.002249)))
+lin(noprint) dlind ; # constant dlind{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 100.
+com c = .028/(9.+1)
+nlls(frml=lstar,iters=500,method=simplex,print) dlind
+nlls(frml=lstar,print) dlind
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis c 'aic = ' aic 'bic = ' sbc %converged
+
+
+log credit / lcredit ; diff lcredit / dlcredit
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dlcredit = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(ht{0}-c)))
+*frml lstar dlcredit = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(ht{0}-.002249)))
+lin(noprint) dlcredit ; # constant dlcredit{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 100.
+com c = .028/(9.+1)
+nlls(frml=lstar,iters=500,method=simplex) dlcredit
+nlls(frml=lstar,iters=500,piters=20,pmethod=simplex) dlcredit
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+log emp / lemp ; diff lemp / dlemp
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dlemp = a0 + a1*dlemp{1} + (b0 + b1*dlemp{1} )/(1+exp(-gamma*(ht{0}-c)))
+*frml lstar dlemp = a0 + a1*dlemp{1} + (b0 + b1*dlemp{1} )/(1+exp(-gamma*(ht{0}-0.002249)))
+lin(noprint) dlemp ; # constant dlemp{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 10.
+com c = .028/(9.+1)
+nlls(frml=lstar,iters=100,method=simplex) dlemp
+nlls(frml=lstar,iters=500,piters=10,pmethod=simplex) dlemp
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dlind = a0 + a1*dlind{1} + (b0 + b1*dlind{1} )/(1+exp(-gamma*(bos{0}-c)))
+*frml lstar dlind = a0 + a1*dlind{1} + (b0 + b1*dlind{1} )/(1+exp(-gamma*(bos{0}-0.7)))
+lin(noprint) dlind ; # constant dlind{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 1.
+com c = 7.94/(9.+4)
+nlls(frml=lstar,iters=500,method=simplex) dlind
+nlls(frml=lstar,iters=500,piters=20,pmethod=simplex) dlind
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+log durable_goods / ldur ; dif ldur / dldur
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dldur = a0 + a1*dldur{1} + (b0 + b1*dldur{1} )/(1+exp(-gamma*(bos{0}-c)))
+*frml lstar dldur = a0 + a1*dldur{1} + (b0 + b1*dldur{1} )/(1+exp(-gamma*(bos{0}-0.7)))
+lin(noprint) dldur ; # constant dldur{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 1.
+com c = 7.94/(9.+4)
+nlls(frml=lstar,iters=500,method=simplex) dldur
+nlls(frml=lstar,iters=500,piters=20,pmethod=simplex) dldur
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc %converged
+
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dlcredit = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(bos{0}-c)))
+*frml lstar dlcredit = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(bos{0}-0.8)))
+lin(noprint) dlcredit ; # constant dlcredit{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 1.
+com c = 7.94/(9.+3)
+nlls(frml=lstar,iters=500,method=simplex) dlcredit
+nlls(frml=lstar,iters=500,piters=20,pmethod=simplex) dlcredit
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dlind = a0 + a1*dlind{1} + (b0 + b1*dlind{1} )/(1+exp(-gamma*(index{0}-c)))
+*frml lstar dlind = a0 + a1*dlind{1} + (b0 + b1*dlind{1} )/(1+exp(-gamma*(index{0}-98)))
+lin(noprint) dlind ; # constant dlind{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 8.
+com c = 1540.0222/(9.+2)
+nlls(frml=lstar,iters=500,method=simplex) dlind
+nlls(frml=lstar,iters=500,piters=40,pmethod=simplex) dlind
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+log loans / lloans ; diff lloans / dlloans
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dlloans = a0 + a1*dlloans{1} + (b0 + b1*dlloans{1} )/(1+exp(-gamma*(index{0}-c)))
+*frml lstar dlloans = a0 + a1*dlloans{1} + (b0 + b1*dlloans{1} )/(1+exp(-gamma*(index{0}-98.51)))
+lin(noprint) dlloans ; # constant dlloans{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 10.
+com c = 1540.0222/(9.+1)
+nlls(frml=lstar,iters=500,method=simplex) dlloans
+nlls(frml=lstar,iters=500,piters=20,pmethod=simplex) dlloans
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dlcredit = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(index{0}-c)))
+*frml lstar dlcredit = a0 + a1*dlcredit{1} + (b0 + b1*dlcredit{1} )/(1+exp(-gamma*(index{0}-98.51)))
+lin(noprint) dlcredit ; # constant dlcredit{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 8.
+com c = 1540.0222/(9.+1)
+nlls(frml=lstar,iters=500,method=simplex) dlcredit
+nlls(frml=lstar,iters=500,piters=20,pmethod=simplex) dlcredit
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+log cash / lcash ; diff lcash / dlcash
+
+nonlin a0 a1 b0 b1 gamma c
+frml lstar dlcash = a0 + a1*dlcash{1} + (b0 + b1*dlcash{1} )/(1+exp(-gamma*(spread{0}-c)))
+*frml lstar dlcash = a0 + a1*dlcash{1} + (b0 + b1*dlcash{1} )/(1+exp(-gamma*(spread{0}-2.5)))
+lin(noprint) dlcash ; # constant dlcash{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = .5
+com c = 25.4/(9.+16)
+nlls(frml=lstar,iters=500,method=simplex) dlcash
+nlls(frml=lstar,iters=500,piters=20,pmethod=simplex) dlcash
+dis %converged
+com aic = -2*%funcval+2*%nreg
+com sbc = -2*%funcval+%nreg*log(%nobs)
+dis 'aic = ' aic 'bic = ' sbc
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,28 @@
+open data c:\work\jones2\DataSet.xls
+calendar(m) 1950:1
+data(format=xls,org=columns)
+tab
+
+
+@dfunit vxo
+log indprod / lind ; dif lind / dlind
+gra 1;# vxo
+
+
+statistics vxo
+
+nonlin(parmset=P) a0 a1 b0 b1 gamma c d0 e1 f1
+frml lstar dlind = a0 + a1*dlind{1} + (b0 + b1*dlind{1} )/(1+exp(-gamma*(vxo{1}-c)))
+frml vol vxo = d0 + e1*vxo{1} + f1*dlind{1}
+lin(print) dlind ; # constant dlind{1}
+com a0 = %beta(1), a1 = %beta(2), b0 = 1., b1 = 0.5, gamma = 1., c = 20.
+lin(print) vxo ; # constant vxo{1} dlind{1}
+com d0 = %beta(1), e1 = %beta(2), f1 = %beta(3)
+nlsystem(parmset=P,iters=2000,subiters=1000) 1986:08 2012:01 lstar vol
+dis %converged
+
+set theta = (1+exp(-gamma*(vxo{0}-23.2274)))^-1
+sca(hea="Figure 5",hlabel="Uncertainty Measure - VXO",vlabel="Values of the Transition Function") 1 ; # vxo theta
+
+
+
